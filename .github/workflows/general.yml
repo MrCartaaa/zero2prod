@@ -72,6 +72,7 @@ jobs:
           PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${GRANT_QUERY}"
 
       - name: Migrate database
+        shell: bash-wrapper {0}
         run: |
           SKIP_DOCKER=true ./scripts/init_db.sh
 
