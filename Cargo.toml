@@ -22,5 +22,17 @@ serde = { version = "1.0.214", features = ["derive"] }
 tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread"] }
 tokio-macros = "2.4.0"
 
+[dependencies.sqlx]
+version = "0.8.*"
+default-features = false
+features = [
+    "runtime-async-std-rustls",
+    "macros",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate"
+]
+
 [dev-dependencies]
 reqwest = "0.12.9"
