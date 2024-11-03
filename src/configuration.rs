@@ -29,14 +29,21 @@ impl DatabaseSettings {
     pub fn connection_string(&self) -> SecretBox<String> {
         SecretBox::new(Box::from(format!(
             "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password.expose_secret(), self.host, self.port, self.database_name
+            self.username,
+            self.password.expose_secret(),
+            self.host,
+            self.port,
+            self.database_name
         )))
     }
 
     pub fn connection_string_without_db(&self) -> SecretBox<String> {
         SecretBox::new(Box::from(format!(
             "postgres://{}:{}@{}:{}",
-            self.username, self.password.expose_secret(), self.host, self.port
+            self.username,
+            self.password.expose_secret(),
+            self.host,
+            self.port
         )))
     }
 }

@@ -1,6 +1,6 @@
+use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::net::TcpListener;
-use secrecy::ExposeSecret;
 use zero2prod::configuration::get_configuration;
 use zero2prod::startup::run;
 use zero2prod::telementry::{get_subscriber, init_subscriber};
