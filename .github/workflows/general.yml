@@ -14,7 +14,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SQLX_VERSION: 0.8.2
+  SQLX_VERSION: 0.8.0
   SQLX_FEATURES: "rustls,postgres"
   APP_USER: app
   APP_USER_PWD: secret
@@ -47,6 +47,7 @@ jobs:
       # It also takes care of caching intermediate build artifacts.
       - name: Install the Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
+
       - name: Install sqlx-cli
         run:
           cargo install sqlx-cli
@@ -78,7 +79,7 @@ jobs:
         run: cargo test
 
       - name: Check that queries are fresh
-        run: cargo clean && touch ./src/lib.rs && cargo sqlx prepare --workspace --check -- --all-targets
+        run: cargo sqlx prepare --workspace --check -- --all-targets
 
   # `fmt` container job
   fmt:
@@ -97,12 +98,6 @@ jobs:
     name: Linting
     runs-on: ubuntu-latest
     env:
-      # This environment variable forces sqlx to use its offline mode,
-      # which means that it will not attempt to connect to a database
-      # when running the tests. It'll instead use the cached query results.
-      # We check that the cached query results are up-to-date in another job,
-      # to speed up the overall CI pipeline.
-      # This will all be covered in detail in chapter 5.
       SQLX_OFFLINE: true
     steps:
       - uses: actions/checkout@v4
