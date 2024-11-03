@@ -78,8 +78,8 @@ jobs:
       - name: Run tests
         run: cargo test
 #       For some reason, I cannot get this to work...
-#      - name: Check that queries are fresh
-#        run: cargo sqlx prepare --workspace --check -- --all-targets
+      - name: Check that queries are fresh
+        run: cargo sqlx prepare --workspace --check -- --all-targets --all-features
 
   # `fmt` container job
   fmt:
