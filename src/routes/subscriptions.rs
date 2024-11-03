@@ -1,8 +1,6 @@
 use actix_web::{web, HttpResponse};
-#[cfg(test)]
 use chrono::Utc;
 use sqlx::PgPool;
-#[cfg(test)]
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
