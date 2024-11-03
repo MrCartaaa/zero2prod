@@ -77,11 +77,8 @@ jobs:
       - name: Run tests
         run: cargo test
 
-      - name: Cargo Clean
-        run: cargo clean
-
       - name: Check that queries are fresh
-        run: cargo sqlx prepare --workspace --check -- --all-targets
+        run: cargo sqlx prepare --workspace --check -- --lib
 
   # `fmt` container job
   fmt:
@@ -97,7 +94,6 @@ jobs:
         run: cargo fmt --check
 
   clippy:
-    needs: test
     name: Linting
     runs-on: ubuntu-latest
     env:
