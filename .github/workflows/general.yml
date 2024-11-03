@@ -77,7 +77,7 @@ jobs:
 
       - name: Run tests
         run: cargo test
-      - name: Prepare new Data
+      - name: Refresh Data
         run: cargo sqlx prepare -- --all-targets --all-features
       - name: Check that queries are fresh
         run: cargo sqlx prepare --workspace --check -- --all-targets --all-features
@@ -96,6 +96,7 @@ jobs:
         run: cargo fmt --check
 
   clippy:
+    needs: test
     name: Linting
     runs-on: ubuntu-latest
     env:
