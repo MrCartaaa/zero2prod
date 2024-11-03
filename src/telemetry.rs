@@ -1,5 +1,5 @@
 use tracing::subscriber::set_global_default;
-use tracing::{Dispatch, Subscriber};
+use tracing::Subscriber;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::fmt::MakeWriter;
@@ -25,5 +25,5 @@ where
 
 pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
     LogTracer::init().expect("Failed to set logger");
-    set_global_default(Dispatch::new(subscriber)).expect("Failed to set subscriber");
+    set_global_default(subscriber).expect("Failed to set subscriber");
 }
