@@ -47,8 +47,6 @@ jobs:
       # It also takes care of caching intermediate build artifacts.
       - name: Install the Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
-      - name: Cargo Clean
-        run: cargo clean
       - name: Install sqlx-cli
         run:
           cargo install sqlx-cli
@@ -79,6 +77,9 @@ jobs:
       - name: Run tests
         run: cargo test
 
+      - name: Cargo Clean
+        run: cargo clean
+
       - name: Check that queries are fresh
         run: cargo sqlx prepare --workspace --check -- --all-targets
 
@@ -96,7 +97,8 @@ jobs:
         run: cargo fmt --check
 
   clippy:
-    name: Clippy
+    needs: test
+    name: Linting
     runs-on: ubuntu-latest
     env:
       # This environment variable forces sqlx to use its offline mode,
