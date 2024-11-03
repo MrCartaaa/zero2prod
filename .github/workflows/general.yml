@@ -113,7 +113,7 @@ jobs:
           --no-default-features
           --locked
       - name: Linting
-        run: cargo clippy -- -D warnings
+        run: cargo sqlx prepare --workspace --check -- --all-targets && cargo clippy -- -D warnings
 
   coverage:
     name: Code coverage
