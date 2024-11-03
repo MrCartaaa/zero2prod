@@ -47,7 +47,8 @@ jobs:
       # It also takes care of caching intermediate build artifacts.
       - name: Install the Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
-
+      - name: Cargo Clean
+        run: cargo clean
       - name: Install sqlx-cli
         run:
           cargo install sqlx-cli

@@ -1,3 +1,4 @@
+#[cfg(test)]
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
