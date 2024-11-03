@@ -96,7 +96,6 @@ jobs:
         run: cargo fmt --check
 
   clippy:
-    needs: test
     name: Linting
     runs-on: ubuntu-latest
     env:
@@ -107,6 +106,37 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
+      - name: Install sqlx-cli
+        run:
+          cargo install sqlx-cli
+          --version=${{ env.SQLX_VERSION }}
+          --features ${{ env.SQLX_FEATURES }}
+          --no-default-features
+          --locked
+        # The --locked flag can be used to force Cargo to use the packaged Cargo.lock file if it is available.
+        # This may be useful for ensuring reproducible builds, to use the exact same set of dependencies that were available when the package was published.
+        # It may also be useful if a newer version of a dependency is published that no longer builds on your system, or has other problems
+
+      - name: Create app user in Postgres
+        run: |
+          sudo apt-get install postgresql-client
+
+          # Create the application user
+          CREATE_QUERY="CREATE USER ${APP_USER} WITH PASSWORD '${APP_USER_PWD}';"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${CREATE_QUERY}"
+
+          # Grant create db privileges to the app user
+          GRANT_QUERY="ALTER USER ${APP_USER} CREATEDB;"
+          PGPASSWORD="password" psql -U "postgres" -h "localhost" -c "${GRANT_QUERY}"
+
+      - name: Migrate database
+        run: |
+          SKIP_DOCKER=true ./scripts/init_db.sh
+
+      - name: Run tests
+        run: cargo test
+      - name: Refresh Data
+        run: cargo sqlx prepare -- --all-targets --all-features
       - name: Linting
         run: cargo clippy -- -D warnings
 
