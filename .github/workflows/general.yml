@@ -78,7 +78,7 @@ jobs:
         run: cargo test
 
       - name: Check that queries are fresh
-        run: cargo sqlx prepare --workspace --check -- --lib
+        run: cargo sqlx prepare --workspace --check -- --bin zero2prod
 
   # `fmt` container job
   fmt:
