@@ -1,6 +1,6 @@
+use crate::configuration::DatabaseSettings;
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
-use crate::configuration::DatabaseSettings;
 
 pub async fn health_check(_req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().finish()
@@ -17,7 +17,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to create database");
 
     let connection_pool = PgPool::connect_with(config.without_db())
-    .await
+        .await
         .expect("Failed to connect to Postgres");
 
     sqlx::migrate!("./migrations")

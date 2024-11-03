@@ -1,6 +1,6 @@
 use secrecy::{ExposeSecret, SecretBox};
-use sqlx::ConnectOptions;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use sqlx::ConnectOptions;
 
 #[derive(serde::Deserialize)]
 pub struct Settings {
