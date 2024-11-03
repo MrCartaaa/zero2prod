@@ -3491,6 +3491,7 @@ dependencies = [
  "once_cell",
  "openssl-sys",
  "reqwest",
+ "secrecy",
  "serde",
  "sqlx",
  "tokio",
