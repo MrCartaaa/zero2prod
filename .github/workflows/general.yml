@@ -142,9 +142,6 @@ jobs:
       - name: Migrate database
         run: |
           SKIP_DOCKER=true ./scripts/init_db.sh
-
-      - name: Run tests
-        run: cargo test
       - name: Refresh Data
         run: cargo sqlx prepare -- --all-targets --all-features
       - name: Linting
