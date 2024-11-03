@@ -20,6 +20,6 @@ async fn main() -> Result<(), std::io::Error> {
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, connection_pool)?.await;
+    let _ = run(listener, connection_pool)?.await;
     Ok(())
 }
