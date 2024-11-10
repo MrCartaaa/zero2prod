@@ -13,10 +13,10 @@ async fn main() -> Result<(), std::io::Error> {
 
     let connection_pool = PgPoolOptions::new().connect_lazy_with(config.database.connect_options());
 
-    let address = format!("127.0.0.1:{}", { config.application.port });
+    let address = format!("{}:{}", config.application.host, config.application.port);
 
     let listener = TcpListener::bind(address)?;
 
-    let _ = run(listener, connection_pool)?.await;
+    run(listener, connection_pool)?.await?;
     Ok(())
 }

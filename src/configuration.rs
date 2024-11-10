@@ -92,5 +92,6 @@ impl DatabaseSettings {
             .password(self.password.expose_secret())
             .username(&self.username)
             .ssl_mode(ssl_mode)
+            .database(&self.database_name)
     }
 }

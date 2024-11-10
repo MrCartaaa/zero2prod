@@ -1,3 +1,4 @@
+use secrecy::SecretBox;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use std::sync::LazyLock;
@@ -44,7 +45,16 @@ async fn spawn_app() -> TestApp {
 }
 
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    let mut connection = PgConnection::connect_with(&config.connect_options())
+    let maintenance_settings = DatabaseSettings {
+        database_name: "postgres".to_string(),
+        username: "postgres".to_string(),
+        password: SecretBox::new(Box::new("password".to_string())),
+        host: config.host.clone(),
+        port: config.port,
+        require_ssl: config.require_ssl,
+    };
+
+    let mut connection = PgConnection::connect_with(&maintenance_settings.connect_options())
         .await
         .expect("Failed to connect to Postgres.");
     connection
