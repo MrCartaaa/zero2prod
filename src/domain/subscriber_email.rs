@@ -4,7 +4,7 @@ use validator::Validate;
 #[derive(Debug, Validate, Deserialize)]
 pub struct SubscriberEmail {
     #[validate(email)]
-    email: String
+    email: String,
 }
 
 impl SubscriberEmail {
@@ -27,7 +27,7 @@ impl AsRef<str> for SubscriberEmail {
 #[cfg(test)]
 mod tests {
     use super::SubscriberEmail;
-    use claims::{assert_err};
+    use claims::assert_err;
     use fake::faker::internet::en::SafeEmail;
     use fake::Fake;
     use quickcheck::Gen;

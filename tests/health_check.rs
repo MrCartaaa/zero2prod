@@ -159,7 +159,11 @@ async fn subscribe_returns_400_when_fields_are_present_but_empty() {
             .await
             .expect("Failed to execute request.");
 
-        assert_eq!(400, response.status().as_u16(),
-                   "The API did not return 400 Bad Request when the payload was {}.", description);
+        assert_eq!(
+            400,
+            response.status().as_u16(),
+            "The API did not return 400 Bad Request when the payload was {}.",
+            description
+        );
     }
 }
