@@ -1,8 +1,7 @@
+use crate::cloneable_auth_token::SecretAuthToken;
 use crate::domain::SubscriberEmail;
 use reqwest::Client;
-use secrecy::zeroize::Zeroize;
-use secrecy::{CloneableSecret, ExposeSecret, SecretBox};
-use serde::Deserialize;
+use secrecy::ExposeSecret;
 
 #[derive(Clone)]
 pub struct EmailClient {
@@ -43,15 +42,12 @@ impl EmailClient {
             html_body: html_content,
             text_body: text_content,
         };
-        dbg!(
-            "this is my auth-token: {}",
-            &self.auth_token.expose_secret().0
-        );
+
         self.http_client
             .post(url)
             .header(
                 "X-Postmark-Server-Token",
-                &self.auth_token.expose_secret().0,
+                &self.auth_token.expose_secret().token,
             )
             .json(&request_body)
             .send()
@@ -60,25 +56,6 @@ impl EmailClient {
         Ok(())
     }
 }
-
-#[derive(Clone, Deserialize, Debug)]
-pub struct AuthToken(String);
-
-impl AuthToken {
-    pub fn new(token: String) -> SecretAuthToken {
-        SecretBox::new(Box::new(AuthToken { 0: token }))
-    }
-}
-
-impl Zeroize for AuthToken {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
-
-impl CloneableSecret for AuthToken {}
-
-pub type SecretAuthToken = SecretBox<AuthToken>;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -92,8 +69,9 @@ struct SendEmailRequest<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::cloneable_auth_token::AuthToken;
     use crate::domain::SubscriberEmail;
-    use crate::email_client::{AuthToken, EmailClient};
+    use crate::email_client::EmailClient;
     use claims::{assert_err, assert_ok};
     use fake::faker::internet::en::SafeEmail;
     use fake::faker::lorem::en::{Paragraph, Sentence};

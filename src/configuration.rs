@@ -1,21 +1,22 @@
+use crate::cloneable_auth_token::{AuthToken, SecretAuthToken};
 use crate::domain::SubscriberEmail;
-use crate::email_client::SecretAuthToken;
-use secrecy::{ExposeSecret, SecretBox};
+use secrecy::ExposeSecret;
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub email_client: EmailClientSettings,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct DatabaseSettings {
     pub username: String,
-    pub password: SecretBox<String>,
+    #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
+    pub password: SecretAuthToken,
     pub host: String,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
@@ -23,17 +24,18 @@ pub struct DatabaseSettings {
     pub require_ssl: bool,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone)]
 pub struct ApplicationSettings {
     pub host: String,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,
+    #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
     pub auth_token: SecretAuthToken,
     pub timeout_milliseconds: u64,
 }
@@ -108,10 +110,11 @@ impl DatabaseSettings {
         } else {
             PgSslMode::Prefer
         };
+        let password = self.password.expose_secret().token.as_str();
         PgConnectOptions::new()
             .host(&self.host)
             .port(self.port)
-            .password(self.password.expose_secret())
+            .password(password)
             .username(&self.username)
             .ssl_mode(ssl_mode)
             .database(&self.database_name)
