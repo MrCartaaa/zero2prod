@@ -3,7 +3,6 @@ use crate::domain::SubscriberEmail;
 use reqwest::Client;
 use secrecy::ExposeSecret;
 
-#[derive(Clone)]
 pub struct EmailClient {
     http_client: Client,
     base_url: String,
@@ -15,7 +14,7 @@ impl EmailClient {
     pub fn new(
         base_url: String,
         sender: SubscriberEmail,
-        auth_token: SecretAuthToken, // TODO: This should be a (Clonable) Secret
+        auth_token: SecretAuthToken,
         timeout: std::time::Duration,
     ) -> Self {
         let http_client = Client::builder().timeout(timeout).build().unwrap();
@@ -44,10 +43,10 @@ impl EmailClient {
         };
 
         self.http_client
-            .post(url)
+            .post(&url)
             .header(
                 "X-Postmark-Server-Token",
-                &self.auth_token.expose_secret().token,
+                self.auth_token.expose_secret().clone().token.as_str(),
             )
             .json(&request_body)
             .send()

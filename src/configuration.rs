@@ -110,11 +110,11 @@ impl DatabaseSettings {
         } else {
             PgSslMode::Prefer
         };
-        let password = self.password.expose_secret().token.as_str();
+
         PgConnectOptions::new()
             .host(&self.host)
             .port(self.port)
-            .password(password)
+            .password(self.password.expose_secret().token.as_str())
             .username(&self.username)
             .ssl_mode(ssl_mode)
             .database(&self.database_name)
