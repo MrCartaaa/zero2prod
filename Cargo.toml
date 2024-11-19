@@ -33,6 +33,7 @@ validator = { version = "0.19.0", features = ["derive"] }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand = "0.8.5"
+serde_json = "1.0.132"
 
 [dependencies.sqlx]
 version = "0.8.*"
@@ -57,3 +58,4 @@ fake = "3.0.1"
 tokio = { version = "1.41.0", features = ["rt", "macros"] }
 wiremock = "0.6.2"
 serde_json = "1.0.132"
+linkify = "0.10.0"
