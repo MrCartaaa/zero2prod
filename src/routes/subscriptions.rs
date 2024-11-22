@@ -4,12 +4,10 @@ use crate::startup::ApplicationBaseUrl;
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
-#[allow(unused)]
 use chrono::Utc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use sqlx::{Executor, PgPool, Postgres, Transaction};
-#[allow(unused)]
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
