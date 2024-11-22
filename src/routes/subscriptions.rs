@@ -164,7 +164,7 @@ pub async fn insert_subscriber(
         new_subscriber.name.as_ref(),
         Utc::now()
     );
-    transaction.execute(query).await.map_err()?;
+    transaction.execute(query).await?;
     Ok(subscriber_id)
 }
 fn generate_subscription_token() -> String {
