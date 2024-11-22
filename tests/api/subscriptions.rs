@@ -121,6 +121,7 @@ async fn subscribe_sends_a_confirmation_email_with_a_link() {
 }
 
 // this is commented out, use it to test the Error Handling, Logging of the post_subscription() fn
+
 // #[tokio::test]
 // async fn subscribe_fails_if_there_is_a_fatal_database_error() {
 //     let app = spawn_app().await;
