@@ -1,5 +1,5 @@
-configuration/local.yaml
-configuration/production.yaml
+/configuration/local.yaml
+/configuration/production.yaml
 
 # Created by https://www.toptal.com/developers/gitignore/api/rust,intellij+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust,intellij+all
