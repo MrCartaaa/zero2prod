@@ -41,6 +41,8 @@ impl TestApp {
 pub async fn spawn_app() -> TestApp {
     LazyLock::force(&TRACING);
 
+    std::env::set_var("APP_ENVIRONMENT", "test");
+
     let email_server = MockServer::start().await;
 
     let config = {
