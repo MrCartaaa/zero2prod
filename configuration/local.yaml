@@ -5,3 +5,8 @@ application:
 
 database:
   require_ssl: false
+
+email_client:
+  base_url: "https://api.postmarkapp.com"
+  sender_email: "office@statbook.io"
+  auth_token: "6eecc240-a299-4e3e-9a10-7d0dd12a4906"
