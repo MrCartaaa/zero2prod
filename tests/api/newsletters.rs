@@ -117,3 +117,27 @@ async fn create_confirmed_subscriber(app: &TestApp) {
         .error_for_status()
         .unwrap();
 }
+
+#[tokio::test]
+async fn requests_missing_authorization_are_rejected() {
+    let app = spawn_app().await;
+
+    let resp = reqwest::Client::new()
+        .post(&format!("{}/newsletters", app.address))
+        .json(&serde_json::json! {{
+            "title": "newsletter",
+            "content": {
+                "text": "Newsletter body",
+                "html": "<p>Newsletter body</p>",
+            }
+        }})
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert_eq!(401, resp.status().as_u16());
+    assert_eq!(
+        r#"Basic realm="publish""#,
+        resp.headers()["WWW-Authenticate"]
+    );
+}
