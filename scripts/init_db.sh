@@ -63,7 +63,7 @@ fi
 >&2 echo "Postgres is up and running on port ${DB_PORT} - running migrations now!"
 
 # Create the application database
-DATABASE_URL=postgres://${APP_USER}:${APP_USER_PWD}@localhost:${DB_PORT}/${APP_DB_NAME}
+DATABASE_URL=postgres://${APP_USER}:${APP_USER_PWD}@127.0.0.1:${DB_PORT}/${APP_DB_NAME}
 export DATABASE_URL
 sqlx database create
 sqlx migrate run
