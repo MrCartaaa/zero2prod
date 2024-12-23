@@ -3,3 +3,4 @@ mod helpers;
 mod newsletters;
 mod subscription_confirm;
 mod subscriptions;
+mod login;

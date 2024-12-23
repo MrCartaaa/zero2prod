@@ -1,12 +1,12 @@
 use crate::authentication::{validate_credentials, AuthError, Credentials};
 use crate::routes::{error_chain_fmt, PublishError};
-use actix_web::{web, HttpResponse, ResponseError};
 use actix_web::http::header::HeaderValue;
 use actix_web::http::{header, StatusCode};
+use actix_web::{web, HttpResponse, ResponseError};
 use secrecy::SecretString;
 use sqlx::PgPool;
 
-#[derive(serde:Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct FormData {
     username: String,
     password: SecretString,
@@ -27,7 +27,7 @@ impl std::fmt::Debug for LoginError {
 }
 
 impl ResponseError for LoginError {
-    fn error_response(&self) -> StatusCode {
+    fn status_code(&self) -> StatusCode {
         match self {
             LoginError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             LoginError::AuthError(_) => StatusCode::UNAUTHORIZED,
@@ -36,7 +36,10 @@ impl ResponseError for LoginError {
 }
 
 #[tracing::instrument(skip(form, pool), feilds(username=tracing::feild::Empty, user_id=tracing::field::Empty))]
-pub async fn login(form: web::Form<FormData>, pool: web::Data<PgPool>) -> Result<HttpResponse, LoginError> {
+pub async fn login(
+    form: web::Form<FormData>,
+    pool: web::Data<PgPool>,
+) -> Result<HttpResponse, LoginError> {
     let credentials = Credentials {
         username: form.0.username,
         password: form.0.password,

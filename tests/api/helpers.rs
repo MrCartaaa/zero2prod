@@ -2,6 +2,7 @@ use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
+use serde_json::Value;
 use uuid::Uuid;
 use wiremock::MockServer;
 use zero2prod::cloneable_auth_token::AuthToken;
@@ -26,10 +27,22 @@ pub struct TestApp {
     pub db_pool: PgPool,
     pub email_server: MockServer,
     pub port: u16,
-    test_user: TestUser,
+    pub(crate) test_user: TestUser,
 }
 
 impl TestApp {
+    pub async fn post_login(&self, body: &Value) -> reqwest::Response
+    where
+        Value: serde::Serialize,
+    {
+        reqwest::Client::new()
+            .post(&format!("{}/login", self.address))
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
     pub async fn post_subscription(&self, body: String) -> reqwest::Response {
         reqwest::Client::new()
             .post(&format!("{}/subscriptions", &self.address))
