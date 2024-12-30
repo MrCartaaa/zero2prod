@@ -1,20 +1,19 @@
-use crate::cloneable_auth_token::SecretAuthToken;
 use crate::domain::SubscriberEmail;
 use reqwest::Client;
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, SecretString};
 
 pub struct EmailClient {
     http_client: Client,
     base_url: String,
     sender: SubscriberEmail,
-    auth_token: SecretAuthToken,
+    auth_token: SecretString,
 }
 
 impl EmailClient {
     pub fn new(
         base_url: String,
         sender: SubscriberEmail,
-        auth_token: SecretAuthToken,
+        auth_token: SecretString,
         timeout: std::time::Duration,
     ) -> Self {
         let http_client = Client::builder().timeout(timeout).build().unwrap();
@@ -46,7 +45,7 @@ impl EmailClient {
             .post(&url)
             .header(
                 "X-Postmark-Server-Token",
-                self.auth_token.expose_secret().clone().token.as_str(),
+                self.auth_token.expose_secret(),
             )
             .json(&request_body)
             .send()
@@ -68,7 +67,6 @@ struct SendEmailRequest<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::cloneable_auth_token::AuthToken;
     use crate::domain::SubscriberEmail;
     use crate::email_client::EmailClient;
     use claims::{assert_err, assert_ok};
@@ -76,6 +74,7 @@ mod tests {
     use fake::faker::lorem::en::{Paragraph, Sentence};
     use fake::{Dummy, Fake, Faker};
     use rand::Rng;
+    use secrecy::SecretString;
     use serde_json::{from_slice, Value};
     use wiremock::matchers::{any, header, header_exists, method, path};
     use wiremock::{Mock, MockServer, Request, ResponseTemplate};
@@ -96,19 +95,9 @@ mod tests {
         EmailClient::new(
             base_url,
             email(),
-            AuthToken::new(Faker.fake()),
+            SecretString::from(Faker.fake::<String>()),
             std::time::Duration::from_millis(300),
         )
-    }
-
-    impl Dummy<Faker> for AuthToken {
-        fn dummy(_config: &Faker) -> Self {
-            Faker.fake()
-        }
-
-        fn dummy_with_rng<R: Rng + ?Sized>(_config: &Faker, _rng: &mut R) -> Self {
-            Faker.fake()
-        }
     }
 
     struct SendEmailBodyMatcher;
