@@ -1,4 +1,5 @@
 pub mod authentication;
+pub mod cloneable_auth_token;
 pub mod configuration;
 pub mod domain;
 pub mod email_client;

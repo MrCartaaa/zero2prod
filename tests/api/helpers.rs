@@ -2,10 +2,10 @@ use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
-use secrecy::SecretString;
 use serde_json::Value;
 use uuid::Uuid;
 use wiremock::MockServer;
+use zero2prod::cloneable_auth_token::AuthToken;
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -171,7 +171,7 @@ async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let maintenance_settings = DatabaseSettings {
         database_name: "postgres".to_string(),
         username: "postgres".to_string(),
-        password: SecretString::from("password".to_string()),
+        password: AuthToken::new("password".to_string()),
         host: config.host.clone(),
         port: config.port,
         require_ssl: config.require_ssl,
