@@ -1,7 +1,6 @@
 use crate::cloneable_auth_token::{AuthToken, SecretAuthToken};
 use crate::domain::SubscriberEmail;
 use secrecy::ExposeSecret;
-use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
@@ -30,9 +29,11 @@ pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub base_url: String,
+    #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
+    pub hmac_secret: SecretAuthToken,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone)]
 pub struct EmailClientSettings {
     pub base_url: String,
     pub sender_email: String,

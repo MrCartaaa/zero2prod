@@ -5,7 +5,7 @@ use crate::routes::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use base64::Engine;
 use secrecy::SecretBox;
 use serde::Deserialize;

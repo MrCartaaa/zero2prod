@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 use serde_json::Value;
 use uuid::Uuid;
 use wiremock::MockServer;
-use zero2prod::cloneable_auth_token::AuthToken;
+use zero2prod::cloneable_auth_token::{SecretAuthToken, AuthToken};
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -28,6 +28,7 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub port: u16,
     pub(crate) test_user: TestUser,
+    pub hmac_secret: SecretAuthToken
 }
 
 impl TestApp {
@@ -161,6 +162,7 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         port: application_port,
         test_user: TestUser::generate(),
+        hmac_secret: config.application.hmac_secret
     };
 
     test_app.test_user.store(&test_app.db_pool).await;

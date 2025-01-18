@@ -1,13 +1,17 @@
 use crate::authentication::{validate_credentials, AuthError, Credentials};
-use crate::routes::{error_chain_fmt, PublishError};
-use actix_web::http::header::HeaderValue;
-use actix_web::http::{header, StatusCode};
-use actix_web::{web, HttpResponse, ResponseError};
-use secrecy::SecretString;
+use crate::routes::error_chain_fmt;
+use ring::hmac;
+use actix_web::http::StatusCode;
+use actix_web::{web, HttpResponse};
+use actix_web::error::InternalError;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
+use crate::cloneable_auth_token::SecretAuthToken;
+// use crate::session_state::TypedSession;
+use crate::startup::HmacSecret;
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct LoginFormData {
     username: String,
     password: SecretString,
 }
@@ -26,32 +30,59 @@ impl std::fmt::Debug for LoginError {
     }
 }
 
-impl ResponseError for LoginError {
-    fn status_code(&self) -> StatusCode {
-        match self {
-            LoginError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            LoginError::AuthError(_) => StatusCode::UNAUTHORIZED,
-        }
-    }
+fn build_err_resp(secret: &SecretAuthToken, err: LoginError) -> InternalError<LoginError> {
+    let message = format!("{}", urlencoding::encode(err.to_string().as_str()));
+
+    println!("{:?}", err.to_string());
+
+    let key_value: &[u8] = secret.expose_secret().token.as_bytes();
+
+    let key = hmac::Key::new(hmac::HMAC_SHA256, key_value);
+
+    let sig = hmac::sign(&key, message.as_bytes());
+
+    let status_code = match err {
+        LoginError::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        LoginError::AuthError(_) => StatusCode::UNAUTHORIZED,
+    };
+    let http_resp = HttpResponse::build(status_code).body(format!("{:?}", sig.as_ref()));
+
+    InternalError::from_response(err, http_resp)
 }
 
-#[tracing::instrument(skip(form, pool), feilds(username=tracing::feild::Empty, user_id=tracing::field::Empty))]
+#[tracing::instrument(skip(form, pool, secret), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
 pub async fn login(
-    form: web::Form<FormData>,
+    form: web::Form<LoginFormData>,
     pool: web::Data<PgPool>,
-) -> Result<HttpResponse, LoginError> {
+    secret: web::Data<HmacSecret>,
+    // session: TypedSession,
+    // TODO: add this session into tracing::instrument, skip()
+) -> Result<HttpResponse, InternalError<LoginError>> {
     let credentials = Credentials {
         username: form.0.username,
         password: form.0.password,
     };
 
     tracing::Span::current().record("username", tracing::field::display(&credentials.username));
-    let user_id = validate_credentials(credentials, &pool)
-        .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
-        })?;
-    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-    Ok(HttpResponse::Ok().finish())
+
+    match validate_credentials(credentials, &pool).await {
+        Ok(user_id) => {
+            tracing::Span::current().record("user_id", tracing::field::display(&user_id));
+            // session.renew();
+            // session
+            //     .insert_user_id(user_id)
+            //     .map_err(|e| {
+            //         let e = LoginError::UnexpectedError(e.into());
+            //         build_err_resp(&secret.0, e)
+            //     })?;
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(e) => {
+            let e = match e {
+                AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
+                AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
+            };
+            Err(build_err_resp(&secret.0, e))
+        }
+    }
 }
