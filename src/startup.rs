@@ -1,6 +1,9 @@
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
 use crate::routes::{confirm, health_check, login, publish_newsletter, subscribe};
+use actix_session::storage::RedisSessionStore;
+use actix_session::SessionMiddleware;
+use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::{web, App, HttpServer};
 use secrecy::ExposeSecret;
@@ -75,9 +78,15 @@ async fn run(
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
     let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+    let secret_key = Key::from(hmac_secret.expose_secret().token.as_bytes());
+    let redis_store = RedisSessionStore::new(redis_uri.expose_secret().clone().token).await?;
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(SessionMiddleware::new(
+               redis_store.clone(),
+               secret_key.clone(),
+            ))
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))

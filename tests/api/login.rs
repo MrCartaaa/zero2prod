@@ -1,5 +1,5 @@
 use crate::helpers::spawn_app;
-use ring::{hmac, test};
+use ring::{hmac};
 use secrecy::ExposeSecret;
 
 #[tokio::test]

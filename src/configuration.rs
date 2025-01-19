@@ -9,6 +9,8 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub email_client: EmailClientSettings,
+    #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
+    pub redis_uri: SecretAuthToken,
 }
 
 #[derive(serde::Deserialize, Clone)]

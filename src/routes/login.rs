@@ -7,7 +7,7 @@ use actix_web::error::InternalError;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::PgPool;
 use crate::cloneable_auth_token::SecretAuthToken;
-// use crate::session_state::TypedSession;
+use crate::session_state::TypedSession;
 use crate::startup::HmacSecret;
 
 #[derive(serde::Deserialize)]
@@ -50,13 +50,12 @@ fn build_err_resp(secret: &SecretAuthToken, err: LoginError) -> InternalError<Lo
     InternalError::from_response(err, http_resp)
 }
 
-#[tracing::instrument(skip(form, pool, secret), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
+#[tracing::instrument(skip(form, pool, secret, session), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
 pub async fn login(
     form: web::Form<LoginFormData>,
     pool: web::Data<PgPool>,
     secret: web::Data<HmacSecret>,
-    // session: TypedSession,
-    // TODO: add this session into tracing::instrument, skip()
+    session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {
     let credentials = Credentials {
         username: form.0.username,
@@ -68,13 +67,13 @@ pub async fn login(
     match validate_credentials(credentials, &pool).await {
         Ok(user_id) => {
             tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-            // session.renew();
-            // session
-            //     .insert_user_id(user_id)
-            //     .map_err(|e| {
-            //         let e = LoginError::UnexpectedError(e.into());
-            //         build_err_resp(&secret.0, e)
-            //     })?;
+            session.renew();
+            session
+                .insert_user_id(user_id)
+                .map_err(|e| {
+                    let e = LoginError::UnexpectedError(e.into());
+                    build_err_resp(&secret.0, e)
+                })?;
             Ok(HttpResponse::Ok().finish())
         }
         Err(e) => {
