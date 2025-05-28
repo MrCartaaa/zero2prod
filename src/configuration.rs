@@ -33,8 +33,6 @@ pub struct ApplicationSettings {
     pub base_url: String,
     #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
     pub hmac_secret: SecretAuthToken,
-    pub cookie_http_only: bool,
-    pub cookie_secure: bool,
 }
 
 #[derive(serde::Deserialize, Clone)]

@@ -3,8 +3,6 @@
 application:
   host: 127.0.0.1
   base_url: "http://127.0.0.1"
-  cookie_http_only: false
-  cookie_secure: false
 
 database:
   require_ssl: false

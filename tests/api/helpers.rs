@@ -1,6 +1,5 @@
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, COOKIE};
 use serde_json::Value;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
@@ -30,51 +29,36 @@ pub struct TestApp {
     pub port: u16,
     pub(crate) test_user: TestUser,
     pub hmac_secret: SecretAuthToken,
-    headers: HeaderMap,
+    pub api_client: reqwest::Client,
 }
 
 impl TestApp {
-    fn set_headers(&mut self, resp: reqwest::Response) -> reqwest::Response {
-        let session_cookie_details = resp
-            .headers()
-            .get("set-cookie")
-            .unwrap()
-            .to_str()
-            .ok()
-            .unwrap_or("");
-        self.headers.insert(
-            COOKIE,
-            HeaderValue::from_str(session_cookie_details).unwrap(),
-        );
-        self.headers.insert(
-            HeaderName::from_static("withcredentials"),
-            HeaderValue::from_static("true"),
-        );
-        resp
-    }
     pub async fn post_login(&mut self, body: &Value) -> reqwest::Response
     where
         Value: serde::Serialize,
     {
-        let resp = reqwest::Client::new()
+        self.api_client
             .post(&format!("{}/login", self.address))
             .form(body)
             .send()
             .await
-            .expect("Failed to execute request.");
-        if resp.status().is_success() {
-            return self.set_headers(resp);
-        }
-        resp
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn post_logout(&mut self) -> reqwest::Response {
+        self.api_client
+            .post(&format!("{}/logout", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request.")
     }
 
     pub async fn post_change_password<Body>(&self, body: &Body) -> reqwest::Response
     where
         Body: serde::Serialize,
     {
-        reqwest::Client::new()
+        self.api_client
             .post(&format!("{}/password", &self.address))
-            .headers(self.headers.clone())
             .form(body)
             .send()
             .await
@@ -82,7 +66,7 @@ impl TestApp {
     }
 
     pub async fn post_subscription(&self, body: String) -> reqwest::Response {
-        reqwest::Client::new()
+        self.api_client
             .post(&format!("{}/subscriptions", &self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body)
@@ -92,7 +76,7 @@ impl TestApp {
     }
 
     pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
-        reqwest::Client::new()
+        self.api_client
             .post(format!("{}/newsletters", &self.address))
             .json(&body)
             .basic_auth(&self.test_user.username, Some(&self.test_user.password))
@@ -193,6 +177,12 @@ pub async fn spawn_app() -> TestApp {
     let application_port = application.port();
     let _ = tokio::spawn(application.run_until_stopped());
 
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .cookie_store(true)
+        .build()
+        .unwrap();
+
     let test_app = TestApp {
         address,
         db_pool: get_connection_pool(&config.database),
@@ -200,7 +190,7 @@ pub async fn spawn_app() -> TestApp {
         port: application_port,
         test_user: TestUser::generate(),
         hmac_secret: config.application.hmac_secret,
-        headers: HeaderMap::new(),
+        api_client: client,
     };
 
     test_app.test_user.store(&test_app.db_pool).await;
