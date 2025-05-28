@@ -68,15 +68,11 @@ async fn new_password_should_meet_owasp_minimum_requirements() {
             "new_password_check": &new_password,
         }))
         .await;
-    // let text = resp.text().await.unwrap().clone();
-    // dbg!(text);
-    dbg!(resp.status().as_u16());
-    assert!(false);
-    // assert_eq!(*&resp.status().as_u16(), 400);
-    // assert_eq!(
-    //     resp.text().await.unwrap(),
-    //     "new password must meet requirements."
-    // );
+    assert_eq!(*&resp.status().as_u16(), 400);
+    assert_eq!(
+        resp.text().await.unwrap(),
+        "new password must meet requirements."
+    );
 }
 
 #[tokio::test]

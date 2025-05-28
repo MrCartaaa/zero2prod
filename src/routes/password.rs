@@ -1,11 +1,13 @@
+use crate::authentication as auth;
+use crate::domain::get_username;
 use crate::routes::error_chain_fmt;
 use crate::session_state::TypedSession;
-use crate::utils::e500;
 use actix_web::http::header::HeaderValue;
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use secrecy::{ExposeSecretMut, SecretString};
+use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -24,6 +26,8 @@ pub enum ChangePasswordError {
 
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
+    // #[error("io error")]
+    // InternalServerError(#[from] actix_web::Error),
 }
 
 impl std::fmt::Debug for ChangePasswordError {
@@ -46,8 +50,10 @@ impl ResponseError for ChangePasswordError {
                 resp
             }
             ChangePasswordError::ValidationError(err) => {
-                return HttpResponse::BadRequest().body(err.clone())
-            }
+                HttpResponse::BadRequest().body(err.clone())
+            } // ChangePasswordError::InternalServerError(_) => {
+              //     HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+              // }
         }
     }
 }
@@ -55,17 +61,43 @@ impl ResponseError for ChangePasswordError {
 pub async fn change_password(
     mut form: web::Form<FormData>,
     session: TypedSession,
+    pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, ChangePasswordError> {
     let user_id = session.get_user_id().context("unable to identify user")?;
-    println!("{:?}", user_id);
     if user_id.is_none() {
         return Err(ChangePasswordError::Unauthorized());
     };
-    if form.0.new_password.expose_secret_mut() != form.0.new_password_check.expose_secret_mut() {
+    let user_id = user_id.unwrap();
+
+    let new_password = form.0.new_password.expose_secret_mut();
+
+    if new_password != form.0.new_password_check.expose_secret_mut() {
         return Err(ChangePasswordError::ValidationError(
             "new password must be confirmed.".to_string(),
         ));
     };
+
+    if new_password.chars().count() < 12 || new_password.chars().count() > 129 {
+        return Err(ChangePasswordError::ValidationError(
+            "new password must meet requirements.".to_string(),
+        ));
+    }
+    let username = get_username(user_id, &pool).await?;
+
+    let credentials = auth::Credentials {
+        username,
+        password: form.0.current_password,
+    };
+    if let Err(e) = auth::validate_credentials(credentials, &pool).await {
+        return match e {
+            auth::AuthError::InvalidCredentials(_) => Err(ChangePasswordError::Unauthorized()),
+            auth::AuthError::UnexpectedError(_) => {
+                Err(ChangePasswordError::UnexpectedError(e.into()))
+            }
+        };
+    }
+
+    auth::change_password(user_id, form.0.new_password, &pool).await?;
 
     Ok(HttpResponse::Ok().finish())
 }
