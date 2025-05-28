@@ -1,6 +1,8 @@
+use crate::cloneable_auth_token::SecretAuthToken;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::{confirm, health_check, login, publish_newsletter, subscribe};
+use crate::routes::{change_password, confirm, health_check, login, publish_newsletter, subscribe};
+use actix_session::config::{PersistentSession, TtlExtensionPolicy};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
@@ -11,7 +13,6 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
-use crate::cloneable_auth_token::SecretAuthToken;
 
 pub struct Application {
     port: u16,
@@ -44,7 +45,10 @@ impl Application {
             config.application.base_url,
             config.application.hmac_secret,
             config.redis_uri,
-        ).await?;
+            config.application.cookie_secure,
+            config.application.cookie_http_only,
+        )
+        .await?;
 
         Ok(Self { port, server })
     }
@@ -74,6 +78,8 @@ async fn run(
     base_url: String,
     hmac_secret: SecretAuthToken,
     redis_uri: SecretAuthToken,
+    cookie_secure: bool,
+    cookie_http_only: bool,
 ) -> Result<Server, anyhow::Error> {
     let db_pool = web::Data::new(db_pool);
     let email_client = web::Data::new(email_client);
@@ -81,17 +87,23 @@ async fn run(
     let secret_key = Key::from(hmac_secret.expose_secret().token.as_bytes());
     let redis_store = RedisSessionStore::new(redis_uri.expose_secret().clone().token).await?;
     let server = HttpServer::new(move || {
+        let session = SessionMiddleware::builder(redis_store.clone(), secret_key.clone())
+            .session_lifecycle(
+                PersistentSession::default()
+                    .session_ttl_extension_policy(TtlExtensionPolicy::OnEveryRequest),
+            )
+            .cookie_http_only(cookie_http_only)
+            .cookie_secure(cookie_secure)
+            .build();
         App::new()
             .wrap(TracingLogger::default())
-            .wrap(SessionMiddleware::new(
-               redis_store.clone(),
-               secret_key.clone(),
-            ))
+            .wrap(session)
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
             .route("/newsletters", web::post().to(publish_newsletter))
             .route("/login", web::post().to(login))
+            .route("/password", web::post().to(change_password))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())

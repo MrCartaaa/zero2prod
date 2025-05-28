@@ -1,10 +1,10 @@
 use crate::helpers::spawn_app;
-use ring::{hmac};
+use ring::hmac;
 use secrecy::ExposeSecret;
 
 #[tokio::test]
 async fn unauthorized_on_bad_credentials() {
-    let app = spawn_app().await;
+    let mut app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": "bad_name",
@@ -17,7 +17,7 @@ async fn unauthorized_on_bad_credentials() {
 
 #[tokio::test]
 async fn authorized_on_good_credentials() {
-    let app = spawn_app().await;
+    let mut app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": app.test_user.username,
@@ -30,7 +30,7 @@ async fn authorized_on_good_credentials() {
 
 #[tokio::test]
 async fn digest_expected_resp_body_hmac_on_bad_credentials() {
-    let app = spawn_app().await;
+    let mut app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": "bad_name",
@@ -38,9 +38,8 @@ async fn digest_expected_resp_body_hmac_on_bad_credentials() {
     });
     let resp = app.post_login(&login_body).await;
 
-    let resp_vbytes: Vec<u8> = serde_json::from_str(
-        resp.text().await.expect("RESULT").as_str()
-        ).unwrap();
+    let resp_vbytes: Vec<u8> =
+        serde_json::from_str(resp.text().await.expect("RESULT").as_str()).unwrap();
     let resp_bytes: &[u8] = &resp_vbytes.clone();
 
     let expected_message = format!("{}", urlencoding::encode("Authentication Failed."));

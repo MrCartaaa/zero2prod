@@ -1,14 +1,14 @@
 use crate::authentication::{validate_credentials, AuthError, Credentials};
-use crate::routes::error_chain_fmt;
-use ring::hmac;
-use actix_web::http::StatusCode;
-use actix_web::{web, HttpResponse};
-use actix_web::error::InternalError;
-use secrecy::{ExposeSecret, SecretString};
-use sqlx::PgPool;
 use crate::cloneable_auth_token::SecretAuthToken;
+use crate::routes::error_chain_fmt;
 use crate::session_state::TypedSession;
 use crate::startup::HmacSecret;
+use actix_web::error::InternalError;
+use actix_web::http::StatusCode;
+use actix_web::{web, HttpResponse};
+use ring::hmac;
+use secrecy::{ExposeSecret, SecretString};
+use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
 pub struct LoginFormData {
@@ -32,8 +32,6 @@ impl std::fmt::Debug for LoginError {
 
 fn build_err_resp(secret: &SecretAuthToken, err: LoginError) -> InternalError<LoginError> {
     let message = format!("{}", urlencoding::encode(err.to_string().as_str()));
-
-    println!("{:?}", err.to_string());
 
     let key_value: &[u8] = secret.expose_secret().token.as_bytes();
 
@@ -68,12 +66,10 @@ pub async fn login(
         Ok(user_id) => {
             tracing::Span::current().record("user_id", tracing::field::display(&user_id));
             session.renew();
-            session
-                .insert_user_id(user_id)
-                .map_err(|e| {
-                    let e = LoginError::UnexpectedError(e.into());
-                    build_err_resp(&secret.0, e)
-                })?;
+            session.insert_user_id(user_id).map_err(|e| {
+                let e = LoginError::UnexpectedError(e.into());
+                build_err_resp(&secret.0, e)
+            })?;
             Ok(HttpResponse::Ok().finish())
         }
         Err(e) => {

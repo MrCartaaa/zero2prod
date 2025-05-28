@@ -1,11 +1,12 @@
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, COOKIE};
+use serde_json::Value;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::sync::LazyLock;
-use serde_json::Value;
 use uuid::Uuid;
 use wiremock::MockServer;
-use zero2prod::cloneable_auth_token::{SecretAuthToken, AuthToken};
+use zero2prod::cloneable_auth_token::{AuthToken, SecretAuthToken};
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
@@ -28,16 +29,52 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub port: u16,
     pub(crate) test_user: TestUser,
-    pub hmac_secret: SecretAuthToken
+    pub hmac_secret: SecretAuthToken,
+    headers: HeaderMap,
 }
 
 impl TestApp {
-    pub async fn post_login(&self, body: &Value) -> reqwest::Response
+    fn set_headers(&mut self, resp: reqwest::Response) -> reqwest::Response {
+        let session_cookie_details = resp
+            .headers()
+            .get("set-cookie")
+            .unwrap()
+            .to_str()
+            .ok()
+            .unwrap_or("");
+        self.headers.insert(
+            COOKIE,
+            HeaderValue::from_str(session_cookie_details).unwrap(),
+        );
+        self.headers.insert(
+            HeaderName::from_static("withcredentials"),
+            HeaderValue::from_static("true"),
+        );
+        resp
+    }
+    pub async fn post_login(&mut self, body: &Value) -> reqwest::Response
     where
         Value: serde::Serialize,
     {
-        reqwest::Client::new()
+        let resp = reqwest::Client::new()
             .post(&format!("{}/login", self.address))
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+        if resp.status().is_success() {
+            return self.set_headers(resp);
+        }
+        resp
+    }
+
+    pub async fn post_change_password<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        reqwest::Client::new()
+            .post(&format!("{}/password", &self.address))
+            .headers(self.headers.clone())
             .form(body)
             .send()
             .await
@@ -162,7 +199,8 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         port: application_port,
         test_user: TestUser::generate(),
-        hmac_secret: config.application.hmac_secret
+        hmac_secret: config.application.hmac_secret,
+        headers: HeaderMap::new(),
     };
 
     test_app.test_user.store(&test_app.db_pool).await;
