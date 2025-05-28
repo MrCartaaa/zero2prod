@@ -55,7 +55,7 @@ features = [
 [dependencies.reqwest]
 version = "0.12.9"
 default-features = false
-features = ["json", "rustls-tls"]
+features = ["cookies", "json", "rustls-tls"]
 
 [dev-dependencies]
 claims = "0.8.0"

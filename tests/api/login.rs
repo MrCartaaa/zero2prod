@@ -4,7 +4,7 @@ use secrecy::ExposeSecret;
 
 #[tokio::test]
 async fn unauthorized_on_bad_credentials() {
-    let mut app = spawn_app().await;
+    let app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": "bad_name",
@@ -17,7 +17,7 @@ async fn unauthorized_on_bad_credentials() {
 
 #[tokio::test]
 async fn authorized_on_good_credentials() {
-    let mut app = spawn_app().await;
+    let app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": app.test_user.username,
@@ -30,7 +30,7 @@ async fn authorized_on_good_credentials() {
 
 #[tokio::test]
 async fn digest_expected_resp_body_hmac_on_bad_credentials() {
-    let mut app = spawn_app().await;
+    let app = spawn_app().await;
 
     let login_body = serde_json::json!({
         "username": "bad_name",

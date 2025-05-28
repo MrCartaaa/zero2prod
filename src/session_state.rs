@@ -14,6 +14,10 @@ impl TypedSession {
         self.0.renew();
     }
 
+    pub fn log_out(self) {
+        self.0.purge()
+    }
+
     pub fn insert_user_id(&self, user_id: Uuid) -> Result<(), SessionInsertError> {
         self.0.insert(Self::USER_ID_KEY, user_id.to_string())
     }

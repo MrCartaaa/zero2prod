@@ -1,7 +1,9 @@
 use crate::cloneable_auth_token::SecretAuthToken;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::{change_password, confirm, health_check, login, publish_newsletter, subscribe};
+use crate::routes::{
+    change_password, confirm, health_check, login, logout, publish_newsletter, subscribe,
+};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
@@ -94,6 +96,7 @@ async fn run(
             .route("/newsletters", web::post().to(publish_newsletter))
             .route("/login", web::post().to(login))
             .route("/password", web::post().to(change_password))
+            .route("/logout", web::post().to(logout))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())

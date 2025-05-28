@@ -33,7 +33,7 @@ pub struct TestApp {
 }
 
 impl TestApp {
-    pub async fn post_login(&mut self, body: &Value) -> reqwest::Response
+    pub async fn post_login(&self, body: &Value) -> reqwest::Response
     where
         Value: serde::Serialize,
     {
@@ -45,7 +45,7 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn post_logout(&mut self) -> reqwest::Response {
+    pub async fn post_logout(&self) -> reqwest::Response {
         self.api_client
             .post(&format!("{}/logout", &self.address))
             .send()
