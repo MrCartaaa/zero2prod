@@ -1,3 +1,4 @@
+use crate::authentication::reject_anonymous_users;
 use crate::cloneable_auth_token::SecretAuthToken;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
@@ -8,6 +9,7 @@ use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
+use actix_web::middleware::from_fn;
 use actix_web::{web, App, HttpServer};
 use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
@@ -95,8 +97,16 @@ async fn run(
             .route("/subscriptions/confirm", web::get().to(confirm))
             .route("/newsletters", web::post().to(publish_newsletter))
             .route("/login", web::post().to(login))
-            .route("/password", web::post().to(change_password))
-            .route("/logout", web::post().to(logout))
+            .route(
+                "/password",
+                web::post()
+                    .to(change_password)
+                    .wrap(from_fn(reject_anonymous_users)),
+            )
+            .route(
+                "/logout",
+                web::post().to(logout).wrap(from_fn(reject_anonymous_users)),
+            )
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())

@@ -1,11 +1,10 @@
 use crate::authentication as auth;
+use crate::authentication::UserId;
 use crate::domain::get_username;
 use crate::routes::error_chain_fmt;
-use crate::session_state::TypedSession;
 use actix_web::http::header::HeaderValue;
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpResponse, ResponseError};
-use anyhow::Context;
 use secrecy::{ExposeSecretMut, SecretString};
 use sqlx::PgPool;
 
@@ -56,14 +55,10 @@ impl ResponseError for ChangePasswordError {
 
 pub async fn change_password(
     mut form: web::Form<PasswordFormData>,
-    session: TypedSession,
+    user_id: web::ReqData<UserId>,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, ChangePasswordError> {
-    let user_id = session.get_user_id().context("unable to identify user")?;
-    if user_id.is_none() {
-        return Err(ChangePasswordError::Unauthorized());
-    };
-    let user_id = user_id.unwrap();
+    let user_id = user_id.into_inner();
 
     let new_password = form.0.new_password.expose_secret_mut();
 
@@ -78,7 +73,7 @@ pub async fn change_password(
             "new password must meet requirements.".to_string(),
         ));
     }
-    let username = get_username(user_id, &pool).await?;
+    let username = get_username(*user_id, &pool).await?;
 
     let credentials = auth::Credentials {
         username,
@@ -93,7 +88,7 @@ pub async fn change_password(
         };
     }
 
-    auth::change_password(user_id, form.0.new_password, &pool).await?;
+    auth::change_password(*user_id, form.0.new_password, &pool).await?;
 
     Ok(HttpResponse::Ok().finish())
 }
