@@ -28,7 +28,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
         "content": {
             "text": "Newsletter body",
             "html": "<p>Newsletter body</p>",
-        }
+        }, "idempotency_key": uuid::Uuid::new_v4().to_string()
     });
 
     let resp = app.post_newsletters(&newsletter_request_body).await;
@@ -71,7 +71,7 @@ async fn newsletters_returns_400_for_invalid_data() {
         assert_eq!(
             resp.status().as_u16(),
             400,
-            "The API did not fail with 300 Bad request when the payload was {}.",
+            "The API did not fail with 400 Bad request when the payload was {}.",
             error_msg
         );
     }
@@ -102,11 +102,42 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
         "content": {
             "text": "Newsletter body",
             "html": "<p>Newsletter body</p>",
-        }
+        }, "idempotency_key": uuid::Uuid::new_v4().to_string()
     });
 
     let resp = app.post_newsletters(&newsletter_request_body).await;
     assert_eq!(resp.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn newsletter_is_idempotent() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newletter Title",
+        "content": {
+        "text": "body",
+        "html": "<p> body <p>"
+    }, "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+    let resp = app.post_newsletters(&newsletter_request_body).await;
+    assert_eq!(resp.status().as_u16(), 200);
+
+    let resp = app.post_newsletters(&newsletter_request_body).await;
+    assert_eq!(*&resp.status().as_u16(), 400);
+    assert_eq!(
+        resp.text().await.unwrap(),
+        "The newsletter has already been posted."
+    );
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {

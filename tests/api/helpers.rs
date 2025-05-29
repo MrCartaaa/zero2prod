@@ -133,6 +133,18 @@ impl TestUser {
         }
     }
 
+    pub async fn login(&self, app: &TestApp) -> reqwest::Response {
+        let login_resp = app
+            .post_login(&serde_json::json!({
+                "username": &app.test_user.username,
+                "password": &app.test_user.password,
+            }))
+            .await;
+
+        assert_eq!(login_resp.status().as_u16(), 200);
+        login_resp
+    }
+
     async fn store(&self, pool: &PgPool) {
         let salt = SaltString::generate(&mut rand::thread_rng());
         let password_hash = Argon2::new(

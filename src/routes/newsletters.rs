@@ -2,6 +2,7 @@ use crate::authentication::{Credentials, UserId};
 use crate::domain::get_username;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::IdempotencyKey;
 use crate::routes::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
@@ -16,6 +17,7 @@ use sqlx::PgPool;
 pub struct BodyData {
     title: String,
     content: Content,
+    idempotency_key: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -34,6 +36,11 @@ pub async fn publish_newsletter(
     let username = get_username(*user_id.clone().into_inner(), &pool).await?;
     tracing::Span::current().record("username", tracing::field::display(&username));
     tracing::Span::current().record("user_id", tracing::field::display(*user_id.into_inner()));
+    let idempotency_key: &IdempotencyKey = &body
+        .idempotency_key
+        .to_owned()
+        .try_into()
+        .map_err(|e: anyhow::Error| PublishError::ValidationError(format!("{}", e)))?;
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
         match subscriber {
@@ -95,6 +102,8 @@ pub enum PublishError {
     AuthError(#[source] anyhow::Error),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
+    #[error("{0}")]
+    ValidationError(String),
 }
 
 impl std::fmt::Debug for PublishError {
@@ -116,6 +125,7 @@ impl ResponseError for PublishError {
                     .insert(header::WWW_AUTHENTICATE, header_val);
                 resp
             }
+            PublishError::ValidationError(err) => HttpResponse::BadRequest().body(err.clone()),
         }
     }
 }
