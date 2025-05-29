@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
 #[allow(dead_code)]
-pub struct FormData {
+pub struct SubscriptionFormData {
     email: String,
     name: String,
 }
@@ -30,10 +30,10 @@ pub fn error_chain_fmt(
     Ok(())
 }
 
-impl TryFrom<FormData> for NewSubscriber {
+impl TryFrom<SubscriptionFormData> for NewSubscriber {
     type Error = String;
 
-    fn try_from(form: FormData) -> Result<Self, Self::Error> {
+    fn try_from(form: SubscriptionFormData) -> Result<Self, Self::Error> {
         let name = SubscriberName::parse(form.name)?;
         let email = SubscriberEmail::new(form.email)?;
         Ok(NewSubscriber { email, name })
@@ -48,7 +48,7 @@ subscriber_name = %form.name,
     )
 )]
 pub async fn subscribe(
-    form: web::Form<FormData>,
+    form: web::Form<SubscriptionFormData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>,

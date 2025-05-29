@@ -10,7 +10,7 @@ use secrecy::{ExposeSecretMut, SecretString};
 use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct PasswordFormData {
     current_password: SecretString,
     new_password: SecretString,
     new_password_check: SecretString,
@@ -26,8 +26,6 @@ pub enum ChangePasswordError {
 
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
-    // #[error("io error")]
-    // InternalServerError(#[from] actix_web::Error),
 }
 
 impl std::fmt::Debug for ChangePasswordError {
@@ -51,15 +49,13 @@ impl ResponseError for ChangePasswordError {
             }
             ChangePasswordError::ValidationError(err) => {
                 HttpResponse::BadRequest().body(err.clone())
-            } // ChangePasswordError::InternalServerError(_) => {
-              //     HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
-              // }
+            }
         }
     }
 }
 
 pub async fn change_password(
-    mut form: web::Form<FormData>,
+    mut form: web::Form<PasswordFormData>,
     session: TypedSession,
     pool: web::Data<PgPool>,
 ) -> Result<HttpResponse, ChangePasswordError> {
