@@ -1,6 +1,13 @@
 use crate::helpers::spawn_app;
 
 #[tokio::test]
+async fn logout_returns_unauthorized_when_not_logged_in() {
+    let app = spawn_app().await;
+    let resp = app.post_logout().await;
+    assert_eq!(resp.status().as_u16(), 401);
+}
+
+#[tokio::test]
 async fn logout_clears_session_state() {
     let app = spawn_app().await;
 

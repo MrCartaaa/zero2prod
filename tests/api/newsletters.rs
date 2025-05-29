@@ -5,6 +5,15 @@ use wiremock::{Mock, ResponseTemplate};
 #[tokio::test]
 async fn newsletters_are_delivered_to_confirmed_subscribers() {
     let app = spawn_app().await;
+
+    let login_body = serde_json::json!({
+        "username": app.test_user.username,
+        "password": app.test_user.password,
+    });
+    let resp = app.post_login(&login_body).await;
+
+    assert_eq!(resp.status().as_u16(), 200);
+
     create_confirmed_subscriber(&app).await;
 
     Mock::given(method("POST"))
@@ -22,13 +31,22 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
         }
     });
 
-    let resp = app.post_newsletters(newsletter_request_body).await;
+    let resp = app.post_newsletters(&newsletter_request_body).await;
     assert_eq!(resp.status().as_u16(), 200);
 }
 
 #[tokio::test]
 async fn newsletters_returns_400_for_invalid_data() {
     let app = spawn_app().await;
+
+    let login_body = serde_json::json!({
+        "username": app.test_user.username,
+        "password": app.test_user.password,
+    });
+    let resp = app.post_login(&login_body).await;
+
+    assert_eq!(resp.status().as_u16(), 200);
+
     let test_cases = vec![
         (
             serde_json::json!({
@@ -48,12 +66,12 @@ async fn newsletters_returns_400_for_invalid_data() {
     ];
 
     for (invalid_body, error_msg) in test_cases {
-        let resp = app.post_newsletters(invalid_body).await;
+        let resp = app.post_newsletters(&invalid_body).await;
 
         assert_eq!(
             resp.status().as_u16(),
             400,
-            "The API did not fail with 300 Bad request wen the payload was {}.",
+            "The API did not fail with 300 Bad request when the payload was {}.",
             error_msg
         );
     }
@@ -62,6 +80,15 @@ async fn newsletters_returns_400_for_invalid_data() {
 #[tokio::test]
 async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
     let app = spawn_app().await;
+
+    let login_body = serde_json::json!({
+        "username": app.test_user.username,
+        "password": app.test_user.password,
+    });
+    let resp = app.post_login(&login_body).await;
+
+    assert_eq!(resp.status().as_u16(), 200);
+
     create_unconfirmed_subscriber(&app).await;
 
     Mock::given(any())
@@ -78,7 +105,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
         }
     });
 
-    let resp = app.post_newsletters(newsletter_request_body).await;
+    let resp = app.post_newsletters(&newsletter_request_body).await;
     assert_eq!(resp.status().as_u16(), 200);
 }
 
@@ -136,8 +163,4 @@ async fn requests_missing_authorization_are_rejected() {
         .expect("Request failed");
 
     assert_eq!(401, resp.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        resp.headers()["WWW-Authenticate"]
-    );
 }

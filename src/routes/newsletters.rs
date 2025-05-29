@@ -1,46 +1,39 @@
-use crate::authentication::{validate_credentials, AuthError, Credentials};
+use crate::authentication::{Credentials, UserId};
+use crate::domain::get_username;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
-use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
+use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use base64::Engine;
 use secrecy::SecretBox;
 use serde::Deserialize;
 use sqlx::PgPool;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct BodyData {
     title: String,
     content: Content,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Content {
     html: String,
     text: String,
 }
 
-#[tracing::instrument(name="Publish newsletter issue.", skip(pool, email_client, body, request), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
+#[tracing::instrument(name="Publish newsletter issue.", skip(pool, email_client, body), fields(username=tracing::field::Empty, user_id=tracing::field::Empty))]
 pub async fn publish_newsletter(
     body: web::Json<BodyData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
-    request: HttpRequest,
+    user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, PublishError> {
-    let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
-
-    tracing::Span::current().record("username", tracing::field::display(&credentials.username));
-    let user_id = validate_credentials(credentials, &pool)
-        .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
-        })?;
-    tracing::Span::current().record("user_id", tracing::field::display(&user_id));
-
+    let username = get_username(*user_id.clone().into_inner(), &pool).await?;
+    tracing::Span::current().record("username", tracing::field::display(&username));
+    tracing::Span::current().record("user_id", tracing::field::display(*user_id.into_inner()));
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
         match subscriber {
@@ -63,6 +56,8 @@ pub async fn publish_newsletter(
     Ok(HttpResponse::Ok().finish())
 }
 
+// removing basic auth -- keeping for reference.
+#[allow(dead_code)]
 fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Error> {
     let header_value = headers
         .get("Authorization")
