@@ -1,4 +1,5 @@
 use crate::helpers::{spawn_app, ConfirmationLinks, TestApp};
+use std::time::Duration;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -126,7 +127,7 @@ async fn newsletter_is_idempotent() {
         "title": "Newletter Title",
         "content": {
         "text": "body",
-        "html": "<p> body <p>"
+        "html": "<p> body </p>"
     }, "idempotency_key": uuid::Uuid::new_v4().to_string()
     });
     let resp = app.post_newsletters(&newsletter_request_body).await;
@@ -138,6 +139,56 @@ async fn newsletter_is_idempotent() {
         resp.text().await.unwrap(),
         "The newsletter has already been posted."
     );
+}
+
+#[tokio::test]
+async fn concurrent_form_submission_is_handled_gracefully() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+    app.test_user.login(&app).await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "title",
+        "content": {
+            "text": "body",
+            "html": "<p>body</p>"
+        },
+        "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+    let resp1 = app.post_newsletters(&newsletter_request_body);
+    let resp2 = app.post_newsletters(&newsletter_request_body);
+    let (resp1, resp2) = tokio::join!(resp1, resp2);
+
+    let s1 = *&resp1.status().as_u16();
+    let s2 = *&resp2.status().as_u16();
+
+    if s1 == 200 {
+        assert_eq!(s2, 400);
+        assert_eq!(
+            resp2.text().await.unwrap(),
+            "The newsletter has already been posted."
+        );
+    } else {
+        if s2 == 200 {
+            assert_eq!(s1, 400);
+            assert_eq!(
+                resp1.text().await.unwrap(),
+                "The newsletter has already been posted."
+            );
+        } else {
+            assert!(
+                false,
+                "None of the responses returned with status code 200."
+            );
+        }
+    }
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {

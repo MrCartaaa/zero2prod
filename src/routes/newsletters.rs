@@ -1,10 +1,9 @@
 use crate::authentication::{Credentials, UserId};
+
 use crate::domain::get_username;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::get_saved_response;
-use crate::idempotency::saved_response;
-use crate::idempotency::IdempotencyKey;
+use crate::idempotency::{save_response, try_processing, IdempotencyKey, NextAction};
 use crate::routes::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::{header, StatusCode};
@@ -46,11 +45,14 @@ pub async fn publish_newsletter(
         .to_owned()
         .try_into()
         .map_err(|e: anyhow::Error| PublishError::ValidationError(format!("{}", e)))?;
-    if let Some(saved_response) =
-        get_saved_response(&pool, idempotency_key, *user_id.clone().into_inner()).await?
-    {
-        return Ok(saved_response);
-    }
+    let trx = match try_processing(&pool, idempotency_key, *user_id.clone().into_inner()).await? {
+        NextAction::StartProcessing(t) => t,
+        NextAction::ReturnSavedResponse(_) => {
+            return Err(PublishError::ValidationError(
+                "The newsletter has already been posted.".to_string(),
+            ));
+        }
+    };
 
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
@@ -71,7 +73,15 @@ pub async fn publish_newsletter(
             }
         }
     }
-    Ok(HttpResponse::Ok().finish())
+    let response = save_response(
+        trx,
+        &idempotency_key,
+        **user_id,
+        HttpResponse::Ok().finish(),
+    )
+    .await?;
+
+    Ok(response)
 }
 
 // removing basic auth -- keeping for reference.
