@@ -2,6 +2,8 @@ use crate::authentication::{Credentials, UserId};
 use crate::domain::get_username;
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::get_saved_response;
+use crate::idempotency::saved_response;
 use crate::idempotency::IdempotencyKey;
 use crate::routes::error_chain_fmt;
 use actix_web::http::header::{HeaderMap, HeaderValue};
@@ -35,12 +37,21 @@ pub async fn publish_newsletter(
 ) -> Result<HttpResponse, PublishError> {
     let username = get_username(*user_id.clone().into_inner(), &pool).await?;
     tracing::Span::current().record("username", tracing::field::display(&username));
-    tracing::Span::current().record("user_id", tracing::field::display(*user_id.into_inner()));
+    tracing::Span::current().record(
+        "user_id",
+        tracing::field::display(*user_id.clone().into_inner()),
+    );
     let idempotency_key: &IdempotencyKey = &body
         .idempotency_key
         .to_owned()
         .try_into()
         .map_err(|e: anyhow::Error| PublishError::ValidationError(format!("{}", e)))?;
+    if let Some(saved_response) =
+        get_saved_response(&pool, idempotency_key, *user_id.clone().into_inner()).await?
+    {
+        return Ok(saved_response);
+    }
+
     let subscribers = get_confirmed_subscribers(&pool).await?;
     for subscriber in subscribers {
         match subscriber {
