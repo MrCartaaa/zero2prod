@@ -1,4 +1,6 @@
 mod new_subscriber;
+pub mod newsletter_queue;
+pub mod newsletters;
 mod subscriber_email;
 mod subscriber_name;
 mod users;

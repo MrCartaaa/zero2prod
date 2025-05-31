@@ -7,6 +7,8 @@ use uuid::Uuid;
 use wiremock::MockServer;
 use zero2prod::cloneable_auth_token::{AuthToken, SecretAuthToken};
 use zero2prod::configuration::{get_configuration, DatabaseSettings};
+use zero2prod::email_client::EmailClient;
+use zero2prod::newsletter_delivery_worker::{try_execute_task, ExecutionOutcome};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -30,6 +32,7 @@ pub struct TestApp {
     pub(crate) test_user: TestUser,
     pub hmac_secret: SecretAuthToken,
     pub api_client: reqwest::Client,
+    pub email_client: EmailClient,
 }
 
 impl TestApp {
@@ -110,6 +113,20 @@ impl TestApp {
         let html = get_links(&body["HtmlBody"].as_str().unwrap());
         let plain_text = get_links(&body["TextBody"].as_str().unwrap());
         ConfirmationLinks { html, plain_text }
+    }
+}
+
+impl TestApp {
+    pub async fn dispatch_all_pending_emails(&self) {
+        loop {
+            if let ExecutionOutcome::EmptyQueue =
+                try_execute_task(&self.db_pool, &self.email_client)
+                    .await
+                    .unwrap()
+            {
+                break;
+            }
+        }
     }
 }
 
@@ -205,6 +222,7 @@ pub async fn spawn_app() -> TestApp {
         test_user: TestUser::generate(),
         hmac_secret: config.application.hmac_secret,
         api_client: client,
+        email_client: config.email_client.client(),
     };
 
     test_app.test_user.store(&test_app.db_pool).await;

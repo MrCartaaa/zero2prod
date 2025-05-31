@@ -1,5 +1,6 @@
 use crate::cloneable_auth_token::{AuthToken, SecretAuthToken};
 use crate::domain::SubscriberEmail;
+use crate::email_client::EmailClient;
 use secrecy::ExposeSecret;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
@@ -42,6 +43,14 @@ pub struct EmailClientSettings {
     #[serde(deserialize_with = "AuthToken::deserialize_from_str")]
     pub auth_token: SecretAuthToken,
     pub timeout_milliseconds: u64,
+}
+
+impl EmailClientSettings {
+    pub fn client(self) -> EmailClient {
+        let sender_email = self.sender().expect("Invalid sender email address.");
+        let timeout = self.timout();
+        EmailClient::new(self.base_url, sender_email, self.auth_token, timeout)
+    }
 }
 
 impl EmailClientSettings {
