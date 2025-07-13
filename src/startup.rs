@@ -5,6 +5,7 @@ use crate::email_client::EmailClient;
 use crate::routes::{
     change_password, confirm, health_check, login, logout, publish_newsletter, subscribe,
 };
+use actix_session::config::{PersistentSession, TtlExtensionPolicy};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
@@ -78,10 +79,16 @@ async fn run(
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
-            .wrap(SessionMiddleware::new(
-                redis_store.clone(),
-                secret_key.clone(),
-            ))
+            .wrap(
+                SessionMiddleware::builder(redis_store.clone(), secret_key.clone())
+                    .session_lifecycle(
+                        PersistentSession::default()
+                            .session_ttl_extension_policy(TtlExtensionPolicy::OnEveryRequest),
+                    )
+                    .cookie_http_only(false)
+                    .cookie_secure(false)
+                    .build(),
+            )
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
