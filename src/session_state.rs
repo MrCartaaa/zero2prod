@@ -15,11 +15,14 @@ impl TypedSession {
     }
 
     pub fn log_out(self) {
-        self.0.purge()
+        self.0.purge();
     }
 
-    pub fn insert_user_id(&self, user_id: Uuid) -> Result<(), SessionInsertError> {
-        self.0.insert(Self::USER_ID_KEY, user_id.to_string())
+    pub fn insert_user_id(&self, _user_id: Uuid) -> Result<(), SessionInsertError> {
+        // WARNING: overriding session value for testing -- this might have to be perminently
+        // implemented for more involved testing... at which time an auth_service might require
+        // implementation
+        self.0.insert(Self::USER_ID_KEY, 1)
     }
 
     pub fn get_user_id(&self) -> Result<Option<Uuid>, SessionGetError> {

@@ -11,17 +11,17 @@ if ! [ -x "$(command -v sqlx)" ]; then
 fi
 
 # Check if a custom parameter has been set, otherwise use default values
-DB_PORT="${DB_PORT:=5432}"
-SUPERUSER="${SUPERUSER:=postgres}"
-SUPERUSER_PWD="${SUPERUSER_PWD:=password}"
-APP_USER="${APP_USER:=app}"
-APP_USER_PWD="${APP_USER_PWD:=secret}"
-APP_DB_NAME="${APP_DB_NAME:=newsletter}"
+DB_PORT="2343"
+SUPERUSER="postgres"
+SUPERUSER_PWD="password"
+APP_USER="app"
+APP_USER_PWD="secret"
+APP_DB_NAME="newsletter"
 
 # Allow to skip Docker if a dockerized Postgres database is already running
 if [[ -z "${SKIP_DOCKER}" ]]; then
   # if a postgres container is running, print instructions to kill it and exit
-  RUNNING_POSTGRES_CONTAINER=$(docker ps --filter 'name=postgres' --filter 'publish=5432' --format '{{.ID}}')
+  RUNNING_POSTGRES_CONTAINER=$(docker ps --filter 'name=postgres' --filter 'publish=2343' --format '{{.ID}}')
   if [[ -n $RUNNING_POSTGRES_CONTAINER ]]; then
     echo >&2 "there is a postgres container already running, kill it with"
     echo >&2 "    docker kill ${RUNNING_POSTGRES_CONTAINER}"
@@ -61,8 +61,6 @@ fi
 >&2 echo "Postgres is up and running on port ${DB_PORT} - running migrations now!"
 
 # Create the application database
-DATABASE_URL=postgres://${APP_USER}:${APP_USER_PWD}@127.0.0.1:${DB_PORT}/${APP_DB_NAME}
-export DATABASE_URL
 sqlx database create
 sqlx migrate run
 
