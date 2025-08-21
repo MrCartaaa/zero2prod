@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -x
 set -eo pipefail
 
 if ! [ -x "$(command -v sqlx)" ]; then
@@ -27,7 +26,7 @@ if [[ -z "${SKIP_DOCKER}" ]]; then
     echo >&2 "    docker kill ${RUNNING_POSTGRES_CONTAINER}"
     exit 1
   fi
-  CONTAINER_NAME="postgres_$(date '+%s')"
+  CONTAINER_NAME="merchant_service_sidecar_pg$(uuidgen)"
   # Launch postgres using Docker
   docker run \
     --env POSTGRES_USER=${SUPERUSER} \

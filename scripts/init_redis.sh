@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -x
 set -eo pipefail
 
 # if a redis container is running, print instructions to kill it and exit
@@ -14,7 +13,7 @@ fi
 docker run \
   -p "6379:6379" \
   -d \
-  --name "redis_$(date '+%s')" \
+  --name "merchant_service_sidecar_redis_$(uuidgen)" \
   redis:7
 
 >&2 echo "Redis is ready to go!"
